@@ -13,12 +13,6 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
 
   const todosTable = process.env.TODOS_TABLE
 
-  // TODO: Update a TODO item with the provided id using values in the "updatedTodo" object
-
-  //const authHeader = event.headers.Authorization
-  //const authSplit = authHeader.split(" ")
-  //const token = authSplit[1]
-
   const updateTodoParams = {
     TableName: todosTable,
     Key: { "todoId": todoId },
