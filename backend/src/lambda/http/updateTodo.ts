@@ -34,7 +34,7 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
     ReturnValues:"UPDATED_NEW"
   }
 
-const runthis = await docClient.update(updateTodoParams).promise()
+const updated = await docClient.update(updateTodoParams).promise()
 
 return {
     statusCode: 201,
@@ -42,7 +42,7 @@ return {
         'Access-Control-Allow-Origin': '*'
     },
     body: JSON.stringify({
-      runthis
+      updated
     })
 }
 }
