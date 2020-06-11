@@ -16,6 +16,7 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
 
     const parsedBody = JSON.parse(event.body)
 
+    // getting request token, we used the token for storage on DynamoDB
     const authHeader = event.headers.Authorization;
     const authSplit = authHeader.split(" ");
     const token = authSplit[1];
