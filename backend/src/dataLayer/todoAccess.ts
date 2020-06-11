@@ -12,22 +12,24 @@ export class TodoAccess {
 
     constructor(
         private readonly docClient: DocumentClient = createDynamoDBClient(),
-        private readonly todoTable = process.env.TODO_TABLE) {
+        private readonly todoTable = process.env.TODOS_TABLE) {
     }
 
-    async deleteTodoItem(todoId: string) {
-        console.log("Delete Item with ID: ", todoId)
+    async deleteTodoItem(todoId: string, userId: string) {
+        console.log("Delete Item with ID: ", todoId);
         await this.docClient.delete({
             TableName: this.todoTable,
             Key: {
-                todoId: todoId
+                todoId: todoId,
+                userId: userId
             }
         }).promise();
     }
 
     async getAllTodoItem(userId: string): Promise<TodoItem[]> {
-        console.log('Getting all Todos')
 
+        console.log('New incoming query');
+        console.log('Querying all todos from DynamoDB');        
         const result = await this.docClient.query({
             TableName: this.todoTable,
             IndexName: "UserIdIndex",
@@ -39,17 +41,17 @@ export class TodoAccess {
         }).promise()
 
         const items = result.Items
-        console.log('Retrieved Item:', items)
-
+        console.log(`Results: ${items.length} - Items: ${JSON.stringify(items)}`);
+        console.log('Sending results...');
         return items as TodoItem[]
     }
 
-    async updateTodoItem(todoId: string, todoUpdate: TodoUpdate): Promise<TodoUpdate> {
+    async updateTodoItem(todoId: string, todoUpdate: TodoUpdate, userId: string): Promise<TodoUpdate> {
         console.log('Updating Todo using ID: ', todoId)
 
-        const todoItem=await this.docClient.update({
+        const todoItem = await this.docClient.update({
             TableName: this.todoTable,
-            Key: {"todoId": todoId},
+            Key: {"todoId": todoId, "userId": userId},
             UpdateExpression: "set #n = :a, dueDate = :b, done = :c",
             ExpressionAttributeValues: {
                 ":a": todoUpdate.name,
@@ -61,12 +63,14 @@ export class TodoAccess {
             },
             ReturnValues: "UPDATED_NEW"
         }).promise();
+        console.log(todoItem, 'TODOITEM UPDATEED');
         console.log('Updating Todo using ID: ', todoId)
-        return todoItem as TodoUpdate;
+        return ;
     }
 
     async createTodoItem(todo: TodoItem): Promise<TodoItem> {
-        console.log('Create Todo using Data: ', todo)
+        console.log('New incoming request');
+        console.log('Creating Todo Item from data: ', JSON.stringify(todo)); 
         await this.docClient.put({
             TableName: this.todoTable,
             Item: todo
@@ -75,8 +79,9 @@ export class TodoAccess {
         return todo
     }
 
-    async s3FileUpload(todoId: string, imageId: string) {
-        console.log('S3 upload')
+    async s3FileUpload(todoId: string, imageId: string, userId: string) {
+        console.log('New incoming Upload');
+        console.log('Uploading data to S3 Bucket'); 
         const bucket = process.env.S3_BUCKET
         const url_exp = process.env.SIGNED_URL_EXPIRATION
 
@@ -89,11 +94,11 @@ export class TodoAccess {
             Key: imageId,
             Expires: url_exp
         });
-        console.log('Signed URL: ', url)
+        console.log('Getting Signed URL: ', url)
         const imageUrl = `https://${bucket}.s3.amazonaws.com/${imageId}`;
         await this.docClient.update({
             TableName: this.todoTable,
-            Key: {todoId: todoId},
+            Key: {todoId: todoId, userId: userId},
             UpdateExpression: "set attachmentUrl = :a",
             ExpressionAttributeValues: {
                 ":a": imageUrl
@@ -112,13 +117,5 @@ export class TodoAccess {
 }
 
 function createDynamoDBClient() {
-    if (process.env.IS_OFFLINE) {
-        console.log('Creating a local DynamoDB instance')
-        return new XAWS.DynamoDB.DocumentClient({
-            region: 'localhost',
-            endpoint: 'http://localhost:8000'
-        })
-    }
-
     return new XAWS.DynamoDB.DocumentClient()
 }

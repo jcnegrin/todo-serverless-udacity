@@ -12,7 +12,7 @@ export async function getTodos(idToken: string): Promise<Todo[]> {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${idToken}`
     },
-  })
+  });
   console.log('Todos:', response.data)
   return response.data.items
 }

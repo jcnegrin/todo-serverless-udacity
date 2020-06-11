@@ -27,15 +27,15 @@ export async function createTodo(
     })
 }
 
-export async function updateTodo(todoId: string, todoUpdate: TodoUpdate): Promise<TodoUpdate> {
-    return await todoAccess.updateTodoItem(todoId, todoUpdate);
+export async function updateTodo(todoId: string, todoUpdate: TodoUpdate, userId: string): Promise<TodoUpdate> {
+    return await todoAccess.updateTodoItem(todoId, todoUpdate, userId);
 }
 
-export async function deleteTodoItem(todoId: string) {
-    return await todoAccess.deleteTodoItem(todoId)
+export async function deleteTodoItem(todoId: string, userId: string) {
+    return await todoAccess.deleteTodoItem(todoId, userId)
 }
 
-export async function uploadAttachment(todoId: string) {
+export async function uploadAttachment(todoId: string, userId: string) {
     const imageId = uuid.v4();
-    return await todoAccess.s3FileUpload(todoId, imageId)
+    return await todoAccess.s3FileUpload(todoId, imageId, userId)
 }

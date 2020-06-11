@@ -4,6 +4,7 @@ service:
 plugins:
   - serverless-webpack
   - serverless-iam-roles-per-function
+  - serverless-reqvalidator-plugin
 
 provider:
   name: aws
@@ -12,10 +13,13 @@ provider:
   region: ${opt:region, 'eu-west-1'}
 
   environment:
-    TODOS_TABLE: Todos-${self:provider.stage}
+    TODOS_TABLE: Todo-${self:provider.stage}
     AUTH_0_SECRET: qhCcFCiY44sgpb7FRjZySfIldmP45NxRhm_jo2O3bphm3jb8MJQijBjJ6Y1vxh9k
     S3_BUCKET: negrin-serverless-todo-s3-${self:provider.stage}
     SIGNED_URL_EXPIRATION: 300
+  tracing:
+    apiGateway: true
+    lambda: true
 
 functions:
   Auth:
@@ -39,6 +43,11 @@ functions:
       Action:
         - dynamodb:Query
       Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/UserIdIndex
+    - Effect: Allow
+      Action:
+        - xray:PutTraceSegments
+        - xray:PutTelemetryRecords
+      Resource: "*"
 
   # TODO: Configure this function
   CreateTodo:
@@ -48,12 +57,18 @@ functions:
           method: post
           path: todos
           cors: true
+          reqValidatorName: RequestBodyValidator
     iamRoleStatementsName: ${self:service.name}-create-todo-role-${self:provider.stage}
     iamRoleStatements:
     - Effect: Allow
       Action:
         - dynamodb:PutItem
       Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+    - Effect: Allow
+      Action:
+        - xray:PutTraceSegments
+        - xray:PutTelemetryRecords
+      Resource: "*"
 
   # TODO: Configure this function
   UpdateTodo:
@@ -63,12 +78,18 @@ functions:
           method: patch
           path: todos/{todoId}
           cors: true
+          reqValidatorName: RequestBodyValidator
     iamRoleStatementsName: ${self:service.name}-update-todo-role-${self:provider.stage}
     iamRoleStatements:
     - Effect: Allow
       Action:
         - dynamodb:UpdateItem
       Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+    - Effect: Allow
+      Action:
+        - xray:PutTraceSegments
+        - xray:PutTelemetryRecords
+      Resource: "*"
 
   # TODO: Configure this function
   DeleteTodo:
@@ -80,6 +101,11 @@ functions:
           cors: true
     iamRoleStatementsName: ${self:service.name}-delete-todo-role-${self:provider.stage}
     iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - xray:PutTraceSegments
+        - xray:PutTelemetryRecords
+      Resource: "*"
     - Effect: Allow
       Action:
         - dynamodb:DeleteItem
@@ -104,6 +130,11 @@ functions:
       - s3:PutObject
       - s3:GetObject
       Resource: arn:aws:s3:::${self:provider.environment.S3_BUCKET}/*
+    - Effect: Allow
+      Action:
+        - xray:PutTraceSegments
+        - xray:PutTelemetryRecords
+      Resource: "*"
 
 resources:
   Resources:
@@ -117,8 +148,10 @@ resources:
           - AttributeName: userId
             AttributeType: S
         KeySchema:
-          - AttributeName: todoId
+          - AttributeName: userId
             KeyType: HASH
+          - AttributeName: todoId
+            KeyType: RANGE
         GlobalSecondaryIndexes:
           - IndexName: UserIdIndex
             KeySchema:
@@ -161,3 +194,11 @@ resources:
               Action: 's3:GetObject'
               Resource: 'arn:aws:s3:::${self:provider.environment.S3_BUCKET}/*'
         Bucket: !Ref AttachmentBucket
+    RequestBodyValidator:
+      Type: AWS::ApiGateway::RequestValidator
+      Properties:
+        Name: 'request-body-validator'
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        ValidateRequestBody: true
+        ValidateRequestParameters: false
